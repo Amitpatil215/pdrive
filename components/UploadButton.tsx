@@ -44,7 +44,12 @@ export function UploadButton({ onUploaded }: Props) {
         body: file,
       });
       if (!put.ok) {
-        throw new Error("Upload to storage failed");
+        const detail = await put.text();
+        throw new Error(
+          detail.includes("SignatureDoesNotMatch")
+            ? "R2 rejected the upload signature. Recreate the R2 API token and restart npm run dev."
+            : "Upload to storage failed",
+        );
       }
 
       const saved = await parseApi<{ item: MediaItem }>(
