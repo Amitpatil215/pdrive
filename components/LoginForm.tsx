@@ -56,9 +56,6 @@ export function LoginForm() {
           className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:border-sky-500"
         />
       </label>
-      <p className="text-xs text-zinc-500">
-        Enter your base password plus today&apos;s date as DDMMYYYY (IST).
-      </p>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
       <button
         type="submit"
