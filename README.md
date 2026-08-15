@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Drive
 
-## Getting Started
+Personal image and video library. Next.js on Vercel, files in Cloudflare R2, metadata and users in Cloudflare D1.
 
-First, run the development server:
+Login uses a **plain** password stored in D1 plus today's date in IST:
+
+`basePassword + DDMMYYYY`
+
+Example: stored password `amit67` on 15 Aug 2026 → type `amit6715082026`. There is no signup screen.
+
+## 1. Create Cloudflare resources
+
+1. Create an **R2** bucket named `drive-media` (or any name you put in `R2_BUCKET_NAME`).
+2. Create an **R2 API token** with Object Read & Write. Use the access key, secret, and account ID in `.env.local`.
+3. Set bucket CORS so the browser can upload and play files. From this repo:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx wrangler r2 bucket cors set drive-media --file cors.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or paste the same rules in the R2 bucket **Settings → CORS**. After you deploy, you can replace `"origins": ["*"]` with `http://localhost:3000` and your Vercel URL.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Create a **D1** database (for example `drive-db`). Copy the database ID.
+5. Create a Cloudflare API token with **D1 edit** permission.
+6. Run the schema in the D1 SQL editor (or `wrangler d1 execute drive-db --remote --file=./migrations/0001_init.sql`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 2. Add a user
 
-## Learn More
+```sql
+INSERT INTO users (id, email, password)
+VALUES (lower(hex(randomblob(16))), 'you@example.com', 'amit67');
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 3. Local env
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Copy `.env.example` to `.env.local` and fill in values.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `R2_ENDPOINT` is `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
+- `SESSION_SECRET` can be any long random string (`openssl rand -base64 32`)
 
-## Deploy on Vercel
+```bash
+npm install
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open http://localhost:3000, sign in with `password + DDMMYYYY`, then upload, browse, play, and delete.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 4. Deploy to Vercel
+
+Push the repo and import it in Vercel. Add the same env vars in the project settings, then deploy.
+
+Uploads go **directly to R2** with presigned URLs, so large videos are not limited by Vercel's request body size.
